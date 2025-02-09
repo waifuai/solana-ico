@@ -5,6 +5,7 @@ def add_token_operations_commands(subparsers):
     ico_parser = subparsers.add_parser("ico", help="Simulate an ICO")
     ico_parser.add_argument("token_name", help="Name of the token")
     ico_parser.add_argument("initial_price", type=float, help="Initial price of the token")
+    ico_parser.add_argument("--launch_cost", type=float, default=5000, help="Cost of launching the ICO (default: 5000)")
 
     # Exchange Tokens Subcommand
     exchange_parser = subparsers.add_parser("exchange_tokens", help="Exchange tokens between two companies")
@@ -32,7 +33,7 @@ def add_token_operations_commands(subparsers):
 
 def handle_token_operations_commands(args):
     if args.command == "ico":
-        print(f"Simulating ICO for {args.token_name} with initial price {args.initial_price}")
+        print(f"Simulating ICO for {args.token_name} with initial price {args.initial_price} and launch cost {args.launch_cost}")
     elif args.command == "exchange_tokens":
         # Basic error checking for required parameters
         if not all([args.curve_type_a, args.supply_a, args.curve_type_b, args.supply_b]):
