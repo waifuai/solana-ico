@@ -83,11 +83,3 @@ The smart contract is written in Rust and leverages the Solana program library. 
 *   Dynamic fee adjustments based on network conditions.
 *   Enhanced security measures and audits.
 *   CLI tooling to aid users in building on top of the contracts.
-
-## Disclaimer
-
-This project is provided as-is and is for educational and experimental purposes. Please use it responsibly and do your own due diligence before making any financial decisions. No guarantees are made about the security or stability of the system.
-
-## License
-
-This project is licensed under the MIT-0 License - see the [LICENSE](../LICENSE) file for details.

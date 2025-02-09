@@ -27,7 +27,7 @@ def add_affiliate_management_commands(subparsers):
 def handle_affiliate_management_commands(args):
     if args.command == "generate_referral_link":
         affiliate_id = args.affiliate_id
-        referral_link = f"https://tokenizedeconomy.com/ico?ref={affiliate_id}"
+        referral_link = f"https://waifuai.com/ico?ref={affiliate_id}"
         print(f"Referral link: {referral_link}")
     elif args.command == "record_referral":
         referral_code = args.referral_code
