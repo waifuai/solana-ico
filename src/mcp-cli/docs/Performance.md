@@ -1,1 +1,0 @@
-% Performance and resource usage analysis will go here

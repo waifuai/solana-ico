@@ -14,3 +14,8 @@ def polynomial_price(supply, coefficients):
     for i, coefficient in enumerate(coefficients):
         price += coefficient * (supply ** i)
     return price
+
+def calculate_price(tokens_sold):
+    """Calculates the price of CTX after selling a certain number of tokens based on a linear bonding curve."""
+    from src import tokenomics
+    return tokenomics.STARTING_PRICE * (1 + tokens_sold / tokenomics.SCALING_FACTOR)

@@ -7,15 +7,13 @@ from solana.instruction import Instruction, AccountMeta
 from spl.token.instructions import (
     get_associated_token_address,
     create_associated_token_account,
-    mint_to,
-    burn,
-    transfer as spl_transfer,  # Rename to avoid conflict
-    initialize_mint,
     TOKEN_PROGRAM_ID
 )
 import struct
+import os
+import solana.sysvar.rent
 
-SOLANA_CLUSTER_URL = "http://localhost:8899"  # Default, but use env var in main.py
+SOLANA_CLUSTER_URL = os.environ.get("SOLANA_CLUSTER_URL", "http://localhost:8899")
 
 # --- Helper Functions ---
 
@@ -29,6 +27,16 @@ def _create_and_add_instruction(transaction: Transaction, program_id: Pubkey, *a
     transaction.add(instruction)
 
 # --- Core Solana Interaction Functions ---
+
+def connect_to_cluster(cluster_url: str = SOLANA_CLUSTER_URL) -> Client:
+    """Connects to the Solana cluster."""
+    return Client(cluster_url)
+
+def load_keypair(keypair_path: str) -> Keypair:
+    """Loads a keypair from a file."""
+    with open(keypair_path, 'r') as f:
+        secret_key = list(map(int, f.readline().strip().split(',')))
+    return Keypair.from_secret_key(secret_key)
 
 def get_balance(client: Client, public_key: str) -> int:
     """Gets the balance of a Solana account."""
@@ -49,7 +57,7 @@ def send_sol(client: Client, from_keypair: Keypair, to_public_key: str, amount: 
         return result['result']
     except Exception as e:
         raise Exception(f"Failed to send SOL: {e}")
-    
+
 def initialize_ico(
     client: Client,
     program_id: str,
@@ -70,11 +78,6 @@ def initialize_ico(
         escrow_pda, escrow_bump = Pubkey.find_program_address([b"escrow_account", bytes(owner_pubkey)], program_id_pubkey)
 
         # 2. Instruction data (using struct.pack for Borsh serialization)
-        #   <B: instruction index (1 byte),
-        #   32s: token_mint (32 bytes),
-        #   Q: total_supply (8 bytes),
-        #   Q: base_price (8 bytes)
-        #    Q: scaling factor (8 bytes)
         instruction_data = struct.pack(
             "<B32sQQQ",
             0,  # Instruction index for InitializeIco (adjust if needed)
@@ -101,7 +104,7 @@ def initialize_ico(
 
         # 5. Create the transaction and sign
         transaction = Transaction().add(instruction)
-        result = client.send_transaction(transaction, owner_keypair) # Use send_transaction
+        result = client.send_transaction(transaction, owner_keypair)  # Use send_transaction
         return result['result']
 
     except Exception as e:
@@ -121,7 +124,10 @@ def buy_tokens(client: Client, program_id: str, buyer_keypair: Keypair, amount: 
         ico_account_data = client.get_account_info(ico_state_pda)
 
         # Get the token mint from the state data
-        unpacked_data = struct.unpack("<B32s32sQQQQ32sB?", ico_account_data['result']['value']['data'][0].encode('base64'))
+        account_data = ico_account_data['result']['value']['data'][0]
+        if account_data is None:
+            raise Exception("ICO state account data is None")
+        unpacked_data = struct.unpack("<B32s32sQQQQ32sB?", account_data.encode('base64'))
         token_mint_pubkey = Pubkey(unpacked_data[2]) # The token mint
 
         # 2. Get associated token account (create if it doesn't exist)
@@ -129,7 +135,7 @@ def buy_tokens(client: Client, program_id: str, buyer_keypair: Keypair, amount: 
         
         #Check if the buyer token account is created, if not then create it
         try:
-            account_info = client.get_account_info(buyer_token_account)
+            client.get_account_info(buyer_token_account)
         except:
             create_assoc_instruction = create_associated_token_account(
             payer=buyer_pubkey,
@@ -161,7 +167,7 @@ def buy_tokens(client: Client, program_id: str, buyer_keypair: Keypair, amount: 
             data=instruction_data
         )
         transaction = Transaction().add(instruction)
-        result = client.send_transaction(transaction, buyer_keypair) # Use send_transaction
+        result = client.send_transaction(transaction, buyer_keypair)  # Use send_transaction
         return result['result']
 
     except Exception as e:
@@ -179,9 +185,14 @@ def sell_tokens(client: Client, program_id: str, seller_keypair: Keypair, amount
 
         # Fetch the ICO State Account
         ico_account_data = client.get_account_info(ico_state_pda)
+        if ico_account_data['result']['value'] is None:
+            raise Exception("ICO state account not found")
 
         # Get the token mint from the state data
-        unpacked_data = struct.unpack("<B32s32sQQQQ32sB?", ico_account_data['result']['value']['data'][0].encode('base64'))
+        account_data = ico_account_data['result']['value']['data'][0]
+        if account_data is None:
+            raise Exception("ICO state account data is None")
+        unpacked_data = struct.unpack("<B32s32sQQQQ32sB?", account_data.encode('base64'))
         token_mint_pubkey = Pubkey(unpacked_data[2]) # The token mint
 
         # 2. Get associated token account
@@ -208,7 +219,7 @@ def sell_tokens(client: Client, program_id: str, seller_keypair: Keypair, amount
             data=instruction_data
         )
         transaction = Transaction().add(instruction)
-        result = client.send_transaction(transaction, seller_keypair) # Use send_transaction
+        result = client.send_transaction(transaction, seller_keypair)  # Use send_transaction
         return result['result']
     
     except Exception as e:
@@ -284,32 +295,35 @@ def access_resource(client: Client, program_id: str, user_keypair: Keypair, reso
         user_pubkey = user_keypair.pubkey()
 
         # 1. Find PDA.  We need the *server's* key, not the user's
-        resource_state_pda, _ = Pubkey.find_program_address([b"resource_state", bytes(user_pubkey)], program_id_pubkey)  # Replace with actual server pubkey
-        
+        #resource_state_pda, _ = Pubkey.find_program_address([b"resource_state", bytes(user_pubkey)], program_id_pubkey)  # This is wrong, needs to be server's key
         # Fetch the Resource State Account
-        resource_account_data = client.get_account_info(resource_state_pda)
+        #resource_account_data = client.get_account_info(resource_state_pda)
 
         # Get the server address from the state data
-        unpacked_data = struct.unpack(f"<{len(resource_id)}s32sQB?", resource_account_data['result']['value']['data'][0].encode('base64'))
-        server_pubkey = Pubkey(unpacked_data[1]) # The server pubkey
+        #unpacked_data = struct.unpack(f"<{len(resource_id)}s32sQB?", resource_account_data['result']['value']['data'][0].encode('base64'))
+        #server_pubkey = Pubkey(unpacked_data[1]) # The server pubkey
+        
+        # Correct PDA derivation:  The resource_state PDA is derived using the server's key, not the user's.  We need the resource ID to look it up.
+        # This requires a change:  We need to store the server's key *and* the resource ID in the resource_state account to look it up correctly.  For now, this won't work correctly without knowing the server's key.
 
         # 2. Instruction data
         resource_id_bytes = resource_id.encode('utf-8')
         instruction_data = struct.pack(f"<B{len(resource_id_bytes)}sQ", 5, resource_id_bytes, amount)  # Instruction 5
 
         # 3. Accounts
-        accounts = [
-            AccountMeta(pubkey=resource_state_pda, is_signer=False, is_writable=False),  # Readonly
-            AccountMeta(pubkey=user_pubkey, is_signer=True, is_writable=True),          # Pays
-            AccountMeta(pubkey=server_pubkey, is_signer=False, is_writable=True),        # Receives payment
-            AccountMeta(pubkey=solana.system_program.SYS_PROGRAM_ID, is_signer=False, is_writable=False),
-        ]
+        #accounts = [
+        #    AccountMeta(pubkey=resource_state_pda, is_signer=False, is_writable=False),  # Readonly
+        #    AccountMeta(pubkey=user_pubkey, is_signer=True, is_writable=True),          # Pays
+        #    AccountMeta(pubkey=server_pubkey, is_signer=False, is_writable=True),        # Receives payment
+        #    AccountMeta(pubkey=solana.system_program.SYS_PROGRAM_ID, is_signer=False, is_writable=False),
+        #]
+        raise Exception("access_resource not fully implemented due to server key retrieval issue.  Needs resource_state_pda derivation with server key.")
 
         # 4. Create instruction and transaction
-        instruction = Instruction(program_id_pubkey, accounts, instruction_data)
-        transaction = Transaction().add(instruction)
-        result = client.send_transaction(transaction, user_keypair)  # Use send_transaction
-        return result['result']
+        #instruction = Instruction(program_id_pubkey, accounts, instruction_data)
+        #transaction = Transaction().add(instruction)
+        #result = client.send_transaction(transaction, user_keypair)  # Use send_transaction
+        #return result['result']
 
     except Exception as e:
         raise Exception(f"Failed to access resource: {e}")
