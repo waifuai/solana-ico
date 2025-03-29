@@ -59,6 +59,7 @@ def initialize_ico(
         total_supply: Total supply of the token.
         base_price: Initial price in lamports.
         scaling_factor: Scaling factor for the bonding curve.
+            (These parameters configure the on-chain bonding curve logic.)
 
     Returns:
         The transaction signature as a string.
