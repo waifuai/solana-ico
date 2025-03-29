@@ -1,6 +1,6 @@
 # Solana ICO & Resource Management CLI
 
-This CLI tool, built with Python and Typer, allows interaction with a Solana program designed for managing an Initial Coin Offering (ICO) using a bonding curve and controlling access to off-chain resources.
+This CLI tool, built with Python and Typer, allows interaction with a Solana program designed for managing an Initial Coin Offering (ICO) using an *on-chain* bonding curve and controlling access to off-chain resources.
 
 **Note:** This project has undergone significant refactoring. The core logic is now split into modules within the `src/` directory (`solana_client.py`, `ico_manager.py`, `resource_manager.py`, `pda_utils.py`, `config.py`, etc.) and the CLI uses `typer` instead of `argparse`.
 
@@ -102,6 +102,13 @@ The main entry point is `src/main.py`. You can run commands using `python -m src
     ```bash
     python -m src.main resource access /path/to/user_keypair.json "my_premium_api" <server_pubkey> 50000
     ```
+
+
+## Bonding Curve Mechanism
+
+The ICO utilizes a linear bonding curve implemented directly within the deployed Solana program. This means the actual token price calculation, minting, and burning during `ico buy` and `ico sell` operations happen on-chain according to the parameters set during `ico init` (`base_price`, `scaling_factor`).
+
+The `src/curve_estimator.py` module in this CLI provides a *client-side function* (`calculate_price`) to *estimate* the current token price based on the known `tokenomics` constants. This estimation is for informational purposes and may differ slightly from the exact price calculated by the on-chain program at the moment of a transaction due to potential state changes between estimation and execution.
 
 ## Testing
 
