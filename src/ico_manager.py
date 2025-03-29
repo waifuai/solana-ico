@@ -159,7 +159,14 @@ def _get_token_mint_from_ico_state(solana_client: SolanaClient, ico_state_pda: P
         raise SolanaIcoError(f"Error fetching or parsing ICO state account {ico_state_pda}: {e}") from e
 
 
-def buy_tokens(solana_client: SolanaClient, program_id_str: str, buyer_keypair: Keypair, amount_lamports: int, ico_owner_pubkey_str: str) -> str:
+def buy_tokens(
+    solana_client: SolanaClient,
+    program_id_str: str,
+    buyer_keypair: Keypair,
+    amount_lamports: int,
+    ico_owner_pubkey_str: str,
+    token_mint_str: str # Added: Explicitly require token mint
+) -> str:
     """
     Allows a user to buy tokens from the ICO.
 
@@ -169,6 +176,7 @@ def buy_tokens(solana_client: SolanaClient, program_id_str: str, buyer_keypair: 
         buyer_keypair: The keypair of the buyer.
         amount_lamports: The amount of SOL (in lamports) to spend.
         ico_owner_pubkey_str: The public key string of the ICO owner (needed for PDA derivation).
+        token_mint_str: The SPL token mint address as a string.
 
     Returns:
         The transaction signature as a string.
@@ -183,20 +191,13 @@ def buy_tokens(solana_client: SolanaClient, program_id_str: str, buyer_keypair: 
         program_id_pubkey = Pubkey.from_string(program_id_str)
         buyer_pubkey = buyer_keypair.pubkey()
         ico_owner_pubkey = Pubkey.from_string(ico_owner_pubkey_str) # Owner key needed for PDAs
+        token_mint_pubkey = Pubkey.from_string(token_mint_str) # Get mint from argument
 
         # 1. Find PDAs using owner key
         ico_state_pda, _ = find_ico_state_pda(ico_owner_pubkey, program_id_pubkey)
         escrow_pda, _ = find_escrow_pda(ico_owner_pubkey, program_id_pubkey)
 
-        # 2. Get Token Mint - CRITICAL: How is the mint determined?
-        # Option A: Fetch from ICO State Account (Requires parsing logic)
-        # token_mint_pubkey = _get_token_mint_from_ico_state(solana_client, ico_state_pda)
-        # Option B: Pass it as an argument (Simpler if state parsing is complex/unknown)
-        # For now, raise error - this needs clarification based on program design.
-        raise NotImplementedError("Token mint determination for 'buy_tokens' is not implemented. Pass as arg or implement state parsing.")
-        # Example if passed as arg: token_mint_pubkey = Pubkey.from_string(token_mint_str_arg)
-
-        # 3. Get or Create Associated Token Account (ATA) for Buyer
+        # 2. Get or Create Associated Token Account (ATA) for Buyer
         buyer_token_account = get_associated_token_address(buyer_pubkey, token_mint_pubkey)
 
         # Check if ATA exists, create if not
@@ -248,7 +249,14 @@ def buy_tokens(solana_client: SolanaClient, program_id_str: str, buyer_keypair: 
     except Exception as e:
         raise TokenPurchaseError(f"Failed to buy tokens: {e}") from e
 
-def sell_tokens(solana_client: SolanaClient, program_id_str: str, seller_keypair: Keypair, amount_tokens: int, ico_owner_pubkey_str: str) -> str:
+def sell_tokens(
+    solana_client: SolanaClient,
+    program_id_str: str,
+    seller_keypair: Keypair,
+    amount_tokens: int,
+    ico_owner_pubkey_str: str,
+    token_mint_str: str # Added: Explicitly require token mint
+) -> str:
     """
     Allows a user to sell tokens back to the ICO.
 
@@ -258,6 +266,7 @@ def sell_tokens(solana_client: SolanaClient, program_id_str: str, seller_keypair
         seller_keypair: The keypair of the seller.
         amount_tokens: The amount of tokens to sell.
         ico_owner_pubkey_str: The public key string of the ICO owner (needed for PDA derivation).
+        token_mint_str: The SPL token mint address as a string.
 
     Returns:
         The transaction signature as a string.
@@ -272,17 +281,13 @@ def sell_tokens(solana_client: SolanaClient, program_id_str: str, seller_keypair
         program_id_pubkey = Pubkey.from_string(program_id_str)
         seller_pubkey = seller_keypair.pubkey()
         ico_owner_pubkey = Pubkey.from_string(ico_owner_pubkey_str) # Owner key needed for PDAs
+        token_mint_pubkey = Pubkey.from_string(token_mint_str) # Get mint from argument
 
         # 1. Find PDAs using owner key
         ico_state_pda, _ = find_ico_state_pda(ico_owner_pubkey, program_id_pubkey)
         escrow_pda, _ = find_escrow_pda(ico_owner_pubkey, program_id_pubkey)
 
-        # 2. Get Token Mint (See note in buy_tokens - needs clarification)
-        raise NotImplementedError("Token mint determination for 'sell_tokens' is not implemented. Pass as arg or implement state parsing.")
-        # Example: token_mint_pubkey = _get_token_mint_from_ico_state(solana_client, ico_state_pda)
-        # Example: token_mint_pubkey = Pubkey.from_string(token_mint_str_arg)
-
-        # 3. Get Associated Token Account (ATA) for Seller
+        # 2. Get Associated Token Account (ATA) for Seller
         seller_token_account = get_associated_token_address(seller_pubkey, token_mint_pubkey)
         # Ensure seller ATA exists (should exist if they bought tokens)
         try:

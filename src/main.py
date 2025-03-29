@@ -103,20 +103,18 @@ def buy_tokens_command(
     keypair_path: Annotated[str, typer.Argument(help="Path to the buyer's keypair file")],
     amount: Annotated[int, typer.Argument(help="Amount of SOL to spend (lamports)")],
     ico_owner_pubkey: Annotated[str, typer.Argument(help="Public key of the ICO owner")],
-    # token_mint: Annotated[str, typer.Argument(help="SPL token mint address (required for ATA)")] # Temporarily removed, needs fix in ico_manager
+    token_mint: Annotated[str, typer.Argument(help="SPL token mint address")] # Added token mint argument
 ):
     """Buy CTX tokens from the ICO."""
     client, program_id = get_client_and_program_id()
     buyer_keypair = client.load_keypair(keypair_path)
-    # TODO: Fix token mint determination in ico_manager.buy_tokens
-    # For now, it will raise NotImplementedError from ico_manager
     signature = buy_tokens(
         solana_client=client,
         program_id_str=program_id,
         buyer_keypair=buyer_keypair,
         amount_lamports=amount,
         ico_owner_pubkey_str=ico_owner_pubkey,
-        # token_mint_str_arg=token_mint # Pass if needed by ico_manager
+        token_mint_str=token_mint # Pass token mint to the function
     )
     print(f"Successfully bought tokens with {amount} lamports.")
     print(f"Transaction signature: {signature}")
@@ -126,20 +124,18 @@ def sell_tokens_command(
     keypair_path: Annotated[str, typer.Argument(help="Path to the seller's keypair file")],
     amount: Annotated[int, typer.Argument(help="Amount of CTX tokens to sell")],
     ico_owner_pubkey: Annotated[str, typer.Argument(help="Public key of the ICO owner")],
-    # token_mint: Annotated[str, typer.Argument(help="SPL token mint address (required for ATA)")] # Temporarily removed, needs fix in ico_manager
+    token_mint: Annotated[str, typer.Argument(help="SPL token mint address")] # Added token mint argument
 ):
     """Sell CTX tokens back to the ICO."""
     client, program_id = get_client_and_program_id()
     seller_keypair = client.load_keypair(keypair_path)
-    # TODO: Fix token mint determination in ico_manager.sell_tokens
-    # For now, it will raise NotImplementedError from ico_manager
     signature = sell_tokens(
         solana_client=client,
         program_id_str=program_id,
         seller_keypair=seller_keypair,
         amount_tokens=amount,
         ico_owner_pubkey_str=ico_owner_pubkey,
-        # token_mint_str_arg=token_mint # Pass if needed by ico_manager
+        token_mint_str=token_mint # Pass token mint to the function
     )
     print(f"Successfully sold {amount} tokens.")
     print(f"Transaction signature: {signature}")
@@ -246,11 +242,14 @@ def run_app():
         sys.exit(1)
     except SolanaConnectionError as e:
         print(f"\n❌ Connection Error: {e}", file=sys.stderr)
-        # Cluster URL might not be available if config failed early
+        cluster_url = "unknown (config error?)"
         try:
-             print(f"Please ensure the Solana cluster at {config.get_cluster_url()} is running and accessible.", file=sys.stderr)
+            cluster_url = config.get_cluster_url()
         except ConfigurationError:
-             print("Please ensure the configured Solana cluster is running and accessible.", file=sys.stderr)
+            pass # Keep default message
+        print(f"Please ensure the Solana cluster/validator at '{cluster_url}' is running and accessible.", file=sys.stderr)
+        print("If using a local validator, run 'solana-test-validator' in a separate terminal.", file=sys.stderr)
+        print("Verify the SOLANA_CLUSTER_URL environment variable or .env file.", file=sys.stderr)
         sys.exit(1)
     except TransactionError as e:
         print(f"\n❌ Transaction Error: {e}", file=sys.stderr)

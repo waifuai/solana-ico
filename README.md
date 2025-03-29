@@ -79,19 +79,18 @@ The main entry point is `src/main.py`. You can run commands using `python -m src
     ```bash
     python -m src.main ico init /path/to/owner_keypair.json <token_mint_pubkey> 1000000000 1000 100000
     ```
-*   `ico buy <keypair_path> <amount_lamports> <ico_owner_pubkey>`: Buy tokens from the ICO.
+*   `ico buy <keypair_path> <amount_lamports> <ico_owner_pubkey> <token_mint>`: Buy tokens from the ICO.
     ```bash
-    python -m src.main ico buy /path/to/buyer_keypair.json 50000000 <ico_owner_pubkey>
+    python -m src.main ico buy /path/to/buyer_keypair.json 50000000 <ico_owner_pubkey> <token_mint_pubkey>
     ```
-*   `ico sell <keypair_path> <amount_tokens> <ico_owner_pubkey>`: Sell tokens back to the ICO.
+*   `ico sell <keypair_path> <amount_tokens> <ico_owner_pubkey> <token_mint>`: Sell tokens back to the ICO.
     ```bash
-    python -m src.main ico sell /path/to/seller_keypair.json 100 <ico_owner_pubkey>
+    python -m src.main ico sell /path/to/seller_keypair.json 100 <ico_owner_pubkey> <token_mint_pubkey>
     ```
 *   `ico withdraw <keypair_path> <amount_lamports>`: Withdraw SOL from escrow (owner only).
     ```bash
     python -m src.main ico withdraw /path/to/owner_keypair.json 100000000
     ```
-    **Note:** The `buy` and `sell` commands currently require further implementation details regarding how the `token_mint` is determined (see `src/ico_manager.py`).
 
 **Resource Commands (`resource`):**
 
@@ -105,6 +104,16 @@ The main entry point is `src/main.py`. You can run commands using `python -m src
     ```
 
 ## Testing
+
+## Troubleshooting
+
+*   **`SolanaConnectionError`:** This usually means the CLI cannot connect to the Solana cluster specified by `SOLANA_CLUSTER_URL`.
+    *   **Verify URL:** Run `python -m src.main config show` and check if the displayed 'Cluster URL' is correct.
+    *   **Check Environment:** Ensure `SOLANA_CLUSTER_URL` is set correctly in your environment or `.env` file.
+    *   **Run Local Validator:** If using a local cluster (like the default `http://localhost:8899`), make sure `solana-test-validator` is running in a separate terminal.
+    *   **Verify Connection:** Use `python -m src.main config verify` to test the connection directly.
+*   **`ConfigurationError: SOLANA_PROGRAM_ID environment variable is not set`:** You must set the `SOLANA_PROGRAM_ID` environment variable or add it to your `.env` file, pointing to the deployed program's public key.
+*   **`KeypairError`:** Check that the path provided to a keypair file is correct and that the file contains a valid secret key (usually a JSON array or comma-separated list of numbers).
 
 The project uses `unittest` and `unittest.mock`. Tests are located in the `src/tests/` directory.
 
