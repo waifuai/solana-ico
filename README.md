@@ -23,6 +23,10 @@ This CLI tool, built with Python and Typer, allows interaction with a Solana pro
     pip install -r requirements.txt --user
     ```
 
+## License
+
+This project is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file for details.
+
 ## Configuration
 
 The CLI requires two environment variables to be set:
@@ -112,16 +116,6 @@ The `src/curve_estimator.py` module in this CLI provides a *client-side function
 
 ## Testing
 
-## Troubleshooting
-
-*   **`SolanaConnectionError`:** This usually means the CLI cannot connect to the Solana cluster specified by `SOLANA_CLUSTER_URL`.
-    *   **Verify URL:** Run `python -m src.main config show` and check if the displayed 'Cluster URL' is correct.
-    *   **Check Environment:** Ensure `SOLANA_CLUSTER_URL` is set correctly in your environment or `.env` file.
-    *   **Run Local Validator:** If using a local cluster (like the default `http://localhost:8899`), make sure `solana-test-validator` is running in a separate terminal.
-    *   **Verify Connection:** Use `python -m src.main config verify` to test the connection directly.
-*   **`ConfigurationError: SOLANA_PROGRAM_ID environment variable is not set`:** You must set the `SOLANA_PROGRAM_ID` environment variable or add it to your `.env` file, pointing to the deployed program's public key.
-*   **`KeypairError`:** Check that the path provided to a keypair file is correct and that the file contains a valid secret key (usually a JSON array or comma-separated list of numbers).
-
 The project uses `unittest` and `unittest.mock`. Tests are located in the `src/tests/` directory.
 
 To run the tests, ensure you have `pytest` installed (`pip install pytest --user`) and run it from the project root directory:
@@ -131,3 +125,13 @@ pytest
 ```
 
 The `pytest.ini` file configures `pytest` to find modules within the `src` directory correctly.
+
+## Troubleshooting
+
+*   **`SolanaConnectionError`:** This usually means the CLI cannot connect to the Solana cluster specified by `SOLANA_CLUSTER_URL`.
+    *   **Verify URL:** Run `python -m src.main config show` and check if the displayed 'Cluster URL' is correct.
+    *   **Check Environment:** Ensure `SOLANA_CLUSTER_URL` is set correctly in your environment or `.env` file.
+    *   **Run Local Validator:** If using a local cluster (like the default `http://localhost:8899`), make sure `solana-test-validator` is running in a separate terminal.
+    *   **Verify Connection:** Use `python -m src.main config verify` to test the connection directly.
+*   **`ConfigurationError: SOLANA_PROGRAM_ID environment variable is not set`:** You must set the `SOLANA_PROGRAM_ID` environment variable or add it to your `.env` file, pointing to the deployed program's public key.
+*   **`KeypairError`:** Check that the path provided to a keypair file is correct and that the file contains a valid secret key (usually a JSON array or comma-separated list of numbers).
