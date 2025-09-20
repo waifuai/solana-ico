@@ -1,3 +1,13 @@
+"""
+Main entry point and CLI interface for the Solana ICO application.
+
+This module serves as the main entry point for the ContextCoin (CTX) Solana ICO CLI.
+It provides a command-line interface using Typer for managing ICO operations,
+resource access, and configuration. The CLI supports operations like initializing
+ICOs, buying/selling tokens, managing resources, and interacting with the Solana
+blockchain through a structured command hierarchy.
+"""
+
 import sys
 from typing import Tuple
 

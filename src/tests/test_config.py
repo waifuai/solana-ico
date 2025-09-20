@@ -1,3 +1,12 @@
+"""
+Unit tests for the configuration module.
+
+This module contains comprehensive unit tests for the configuration management
+functionality, including environment variable loading, URL validation, program
+ID validation, and configuration printing. Tests use mocking to isolate the
+configuration module from external dependencies.
+"""
+
 import unittest
 import os
 from unittest.mock import patch, MagicMock

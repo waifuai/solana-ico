@@ -1,3 +1,12 @@
+"""
+Unit tests for the ICO manager module.
+
+This module contains comprehensive unit tests for the Initial Coin Offering (ICO)
+management functionality, including tests for ICO initialization, token buying,
+token selling, and escrow withdrawal operations. Tests use extensive mocking
+to isolate the ICO manager from Solana client and PDA dependencies.
+"""
+
 import unittest
 import struct
 from unittest.mock import patch, MagicMock, ANY

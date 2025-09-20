@@ -1,3 +1,12 @@
+"""
+Unit tests for the PDA utilities module.
+
+This module contains unit tests for the Program Derived Address (PDA) utility
+functions, including tests for ICO state PDA derivation, escrow PDA derivation,
+and resource state PDA derivation. Tests verify correct seed generation and
+PDA calculation using mocked Solana program address functionality.
+"""
+
 import unittest
 from unittest.mock import patch, MagicMock
 

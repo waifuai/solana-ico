@@ -1,3 +1,12 @@
+"""
+Unit tests for the resource manager module.
+
+This module contains comprehensive unit tests for the resource access management
+functionality, including tests for resource creation, resource access payment,
+and transaction handling. Tests use extensive mocking to isolate the resource
+manager from Solana client and PDA dependencies.
+"""
+
 import unittest
 import struct
 from unittest.mock import patch, MagicMock, ANY

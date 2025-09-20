@@ -1,3 +1,12 @@
+"""
+Price estimation module for the Solana ICO CLI.
+
+This module provides client-side price estimation functions for the ContextCoin
+token based on the configured bonding curve parameters. It calculates estimated
+token prices based on tokens sold, which can be used for informational purposes
+before executing actual buy/sell transactions on the Solana blockchain.
+"""
+
 import math
 
 # --- General Bonding Curve Formulas (Likely illustrative, not directly used by client) ---

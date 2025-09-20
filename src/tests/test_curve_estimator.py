@@ -1,3 +1,12 @@
+"""
+Unit tests for the curve estimator module.
+
+This module contains unit tests for the price estimation functionality,
+including tests for the calculate_price function and any other bonding curve
+related calculations. Tests verify the accuracy of client-side price estimation
+against the configured tokenomics parameters.
+"""
+
 import unittest
 import curve_estimator # Corrected import (assuming pytest runs from root with src in pythonpath)
 import tokenomics # Corrected import

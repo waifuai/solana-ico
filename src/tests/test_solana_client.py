@@ -1,3 +1,12 @@
+"""
+Unit tests for the Solana client module.
+
+This module contains comprehensive unit tests for the Solana client wrapper,
+including tests for client initialization, keypair loading, balance queries,
+SOL transfers, transaction sending, and account information retrieval. Tests
+use extensive mocking to isolate the client from actual Solana RPC calls.
+"""
+
 import unittest
 import os
 from unittest.mock import patch, MagicMock, mock_open

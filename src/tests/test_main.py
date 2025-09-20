@@ -1,3 +1,12 @@
+"""
+Unit tests for the main CLI module.
+
+This module contains comprehensive tests for the main CLI interface, including
+tests for all command-line commands, argument parsing, error handling, and
+integration with the various manager modules. Tests use Typer's CliRunner
+for end-to-end CLI testing with mocked dependencies.
+"""
+
 import unittest
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
