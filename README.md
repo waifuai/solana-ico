@@ -1,6 +1,17 @@
-# Solana ICO & Resource Management CLI
+# ContextCoin (CTX) Solana ICO & Resource Management CLI
 
-This CLI tool, built with Python and Typer, allows interaction with a Solana program designed for managing an Initial Coin Offering (ICO) using an *on-chain* bonding curve and controlling access to off-chain resources.
+A comprehensive CLI tool built with Python and Typer for interacting with a Solana program that manages an Initial Coin Offering (ICO) using an on-chain linear bonding curve and controls access to off-chain resources through pay-to-access functionality.
+
+## ✨ Features
+
+- **🔗 Solana Integration**: Seamless interaction with Solana blockchain programs
+- **💰 ICO Management**: Initialize, buy, sell tokens with linear bonding curve
+- **🔐 Resource Access**: Pay-to-access system for premium content/resources
+- **⚙️ Configuration**: Robust environment variable management with validation
+- **🛡️ Error Handling**: Comprehensive error handling with helpful messages
+- **📊 Balance Checking**: Query SOL balances for any account
+- **💸 SOL Transfers**: Send SOL between accounts
+- **🔍 Validation**: Input validation and configuration verification
 
 **Note:** This project has undergone significant refactoring. The core logic is now split into modules within the `src/` directory (`solana_client.py`, `ico_manager.py`, `resource_manager.py`, `pda_utils.py`, `config.py`, etc.) and the CLI uses `typer` instead of `argparse`.
 
@@ -8,19 +19,70 @@ This CLI tool, built with Python and Typer, allows interaction with a Solana pro
 
 *   Python 3.8+
 *   `pip` package manager
-*   A running Solana cluster (e.g., local `solana-test-validator` or a devnet/testnet endpoint).
-*   The corresponding Solana program deployed to the target cluster.
+*   A running Solana cluster (e.g., local `solana-test-validator` or a devnet/testnet endpoint)
+*   The corresponding Solana program deployed to the target cluster
 
-## Installation
+## 📦 Recent Improvements
 
-1.  **Clone the repository:**
+The codebase has undergone significant refactoring and quality improvements:
+
+- **🏗️ Modular Architecture**: Functions broken down into smaller, maintainable components
+- **🔧 Type Hints**: Comprehensive type annotations throughout the codebase
+- **⚙️ Constants**: Magic numbers replaced with named constants
+- **🛡️ Input Validation**: Robust validation for all configuration values and user inputs
+- **📚 Documentation**: Enhanced docstrings and CLI help text with examples
+- **🎯 Error Handling**: Improved error messages with actionable troubleshooting tips
+- **🧹 Code Quality**: Consistent formatting, imports organization, and naming conventions
+
+## 🚀 Quick Start
+
+1. **Clone and setup:**
+    ```bash
+    git clone <repository_url>
+    cd solana-ico
+    python -m venv .venv
+    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+    pip install -r requirements.txt
+    ```
+
+2. **Configure environment:**
+    ```bash
+    export SOLANA_CLUSTER_URL="http://localhost:8899"
+    export SOLANA_PROGRAM_ID="YourProgramIdHere"
+    ```
+
+3. **Verify setup:**
+    ```bash
+    python -m src.main config verify
+    ```
+
+4. **Check token info:**
+    ```bash
+    python -m src.main info
+    ```
+
+## 📦 Installation
+
+1. **Clone the repository:**
     ```bash
     git clone <repository_url>
     cd solana-ico
     ```
-2.  **Install dependencies:**
+
+2. **Install dependencies:**
     ```bash
     pip install -r requirements.txt --user
+    ```
+
+3. **Set up environment variables:**
+    ```bash
+    # For local development
+    export SOLANA_CLUSTER_URL="http://localhost:8899"
+    export SOLANA_PROGRAM_ID="YourDeployedProgramIdHere"
+
+    # Or create a .env file
+    echo "SOLANA_CLUSTER_URL=http://localhost:8899" > .env
+    echo "SOLANA_PROGRAM_ID=YourDeployedProgramIdHere" >> .env
     ```
 
 ## License
@@ -47,9 +109,18 @@ SOLANA_PROGRAM_ID=YourProgramIdGoesHere...
 
 You can verify the configuration and connection using the `config verify` command.
 
-## Usage
+## 🖥️ Usage
 
 The main entry point is `src/main.py`. You can run commands using `python -m src.main <command> [subcommand] [arguments]`.
+
+### 📋 Available Commands
+
+Get help for any command using `--help`:
+```bash
+python -m src.main --help          # Show all commands
+python -m src.main info --help     # Show help for specific command
+python -m src.main ico --help      # Show ICO subcommands
+```
 
 **General Commands:**
 

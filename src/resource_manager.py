@@ -1,14 +1,14 @@
 """Manages resource access interactions on the Solana blockchain."""
 
 import struct
-from solders.pubkey import Pubkey # Corrected
-from solders.keypair import Keypair # Corrected
-# from solana.transaction import Transaction # Moved
-from solders.transaction import Transaction # Corrected import
-# from solana.instruction import Instruction, AccountMeta # Moved
-from solders.instruction import Instruction, AccountMeta # Corrected import
-import solders.system_program as system_program # Corrected
-import solders.sysvar as sysvar # Corrected
+from typing import List
+
+from solders.pubkey import Pubkey
+from solders.keypair import Keypair
+from solders.transaction import Transaction
+from solders.instruction import Instruction, AccountMeta
+import solders.system_program as system_program
+import solders.sysvar as sysvar
 
 # Use relative imports within the 'src' directory
 from .solana_client import SolanaClient
@@ -17,10 +17,12 @@ from .exceptions import (
     ResourceCreationError,
     ResourceAccessError,
     TransactionError,
-    # ValueError, # Removed - Use built-in ValueError
     PDAError,
-    # NotImplementedError, # Removed - Use built-in NotImplementedError
 )
+
+# Constants
+INSTRUCTION_INDEX_CREATE_RESOURCE = 4
+INSTRUCTION_INDEX_ACCESS_RESOURCE = 5
 
 # Helper to create and add instruction (consider moving to a shared utils if used elsewhere)
 def _create_and_add_instruction(transaction: Transaction, program_id: Pubkey, *accounts: AccountMeta, data: bytes = b''):
@@ -68,16 +70,15 @@ def create_resource_access(
         resource_state_pda, _ = find_resource_state_pda(server_pubkey, resource_id, program_id_pubkey)
 
         # 2. Instruction data
-        # Assuming instruction index 4 for CreateResourceAccess
         resource_id_bytes = resource_id.encode('utf-8')
         # Pack format depends on how program expects resource_id (fixed size buffer or length-prefixed?)
         # Assuming length-prefixed string for flexibility:
-        # instruction_data = struct.pack(f"<BI{len(resource_id_bytes)}sQ", 4, len(resource_id_bytes), resource_id_bytes, access_fee)
+        # instruction_data = struct.pack(f"<BI{len(resource_id_bytes)}sQ", INSTRUCTION_INDEX_CREATE_RESOURCE, len(resource_id_bytes), resource_id_bytes, access_fee)
         # If fixed size (e.g., 32 bytes), pad/truncate and use:
         # padded_resource_id = resource_id_bytes.ljust(32, b'\0')[:32]
-        # instruction_data = struct.pack("<B32sQ", 4, padded_resource_id, access_fee)
+        # instruction_data = struct.pack("<B32sQ", INSTRUCTION_INDEX_CREATE_RESOURCE, padded_resource_id, access_fee)
         # Using a simple variable length packing for now, adjust as needed:
-        instruction_data = struct.pack(f"<B{len(resource_id_bytes)}sQ", 4, resource_id_bytes, access_fee) # Simple packing, verify program needs
+        instruction_data = struct.pack(f"<B{len(resource_id_bytes)}sQ", INSTRUCTION_INDEX_CREATE_RESOURCE, resource_id_bytes, access_fee) # Simple packing, verify program needs
 
         # 3. Accounts
         accounts = [
@@ -142,10 +143,9 @@ def access_resource(
         resource_state_pda, _ = find_resource_state_pda(server_pubkey, resource_id, program_id_pubkey)
 
         # 2. Instruction data
-        # Assuming instruction index 5 for AccessResource
         resource_id_bytes = resource_id.encode('utf-8')
         # Adjust packing based on program requirements (see create_resource_access notes)
-        instruction_data = struct.pack(f"<B{len(resource_id_bytes)}sQ", 5, resource_id_bytes, amount_lamports) # Simple packing, verify program needs
+        instruction_data = struct.pack(f"<B{len(resource_id_bytes)}sQ", INSTRUCTION_INDEX_ACCESS_RESOURCE, resource_id_bytes, amount_lamports) # Simple packing, verify program needs
 
         # 3. Accounts
         accounts = [

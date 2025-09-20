@@ -1,20 +1,20 @@
 """Manages Initial Coin Offering (ICO) interactions on the Solana blockchain."""
 
 import struct
-from solders.pubkey import Pubkey # Corrected
-from solders.keypair import Keypair # Corrected
-# from solana.transaction import Transaction # Moved
-from solders.transaction import Transaction # Corrected import
-# from solana.instruction import Instruction, AccountMeta # Moved
-from solders.instruction import Instruction, AccountMeta # Corrected import
-import solders.system_program as system_program # Corrected
-import solders.sysvar as sysvar # Corrected
-from spl.token.instructions import ( # Stays (from solana-spl)
+from typing import List
+
+from solders.pubkey import Pubkey
+from solders.keypair import Keypair
+from solders.transaction import Transaction
+from solders.instruction import Instruction, AccountMeta
+import solders.system_program as system_program
+import solders.sysvar as sysvar
+from spl.token.instructions import (
     get_associated_token_address,
     create_associated_token_account,
     TOKEN_PROGRAM_ID
 )
-from solders.rpc.responses import GetAccountInfoResp # Removed RpcResult
+from solders.rpc.responses import GetAccountInfoResp
 
 # Use relative imports within the 'src' directory
 from .solana_client import SolanaClient
@@ -25,12 +25,18 @@ from .exceptions import (
     TokenSaleError,
     EscrowWithdrawalError,
     TransactionError,
-    SolanaIcoError, # For general issues like account not found
+    SolanaIcoError,
     PDAError,
 )
 
+# Constants
+INSTRUCTION_INDEX_INITIALIZE = 0
+INSTRUCTION_INDEX_BUY_TOKENS = 1
+INSTRUCTION_INDEX_SELL_TOKENS = 2
+INSTRUCTION_INDEX_WITHDRAW_ESCROW = 3
+
 # Helper to create and add instruction (consider moving to a shared utils if used elsewhere)
-def _create_and_add_instruction(transaction: Transaction, program_id: Pubkey, *accounts: AccountMeta, data: bytes = b''):
+def _create_and_add_instruction(transaction: Transaction, program_id: Pubkey, *accounts: AccountMeta, data: bytes = b'') -> None:
     """Creates an instruction and adds it to the transaction."""
     instruction = Instruction(
         program_id=program_id,
@@ -38,6 +44,75 @@ def _create_and_add_instruction(transaction: Transaction, program_id: Pubkey, *a
         data=data
     )
     transaction.add(instruction)
+
+def _validate_and_convert_pubkeys(
+    program_id_str: str,
+    buyer_keypair: Keypair,
+    ico_owner_pubkey_str: str,
+    token_mint_str: str
+) -> tuple[Pubkey, Pubkey, Pubkey, Pubkey]:
+    """Validates and converts public key strings to Pubkey objects."""
+    program_id_pubkey = Pubkey.from_string(program_id_str)
+    buyer_pubkey = buyer_keypair.pubkey()
+    ico_owner_pubkey = Pubkey.from_string(ico_owner_pubkey_str)
+    token_mint_pubkey = Pubkey.from_string(token_mint_str)
+    return program_id_pubkey, buyer_pubkey, ico_owner_pubkey, token_mint_pubkey
+
+def _find_ico_pdases(
+    ico_owner_pubkey: Pubkey,
+    program_id_pubkey: Pubkey
+) -> tuple[Pubkey, Pubkey]:
+    """Finds the ICO state and escrow PDAs."""
+    ico_state_pda, _ = find_ico_state_pda(ico_owner_pubkey, program_id_pubkey)
+    escrow_pda, _ = find_escrow_pda(ico_owner_pubkey, program_id_pubkey)
+    return ico_state_pda, escrow_pda
+
+def _handle_associated_token_account(
+    solana_client: SolanaClient,
+    buyer_pubkey: Pubkey,
+    token_mint_pubkey: Pubkey
+) -> Transaction:
+    """Handles creation of associated token account if it doesn't exist."""
+    buyer_token_account = get_associated_token_address(buyer_pubkey, token_mint_pubkey)
+    ata_tx = Transaction()
+
+    try:
+        solana_client.get_account_info(buyer_token_account)
+    except SolanaIcoError:
+        print(f"Buyer ATA {buyer_token_account} not found. Creating...")
+        create_assoc_instruction = create_associated_token_account(
+            payer=buyer_pubkey,
+            owner=buyer_pubkey,
+            mint=token_mint_pubkey,
+        )
+        ata_tx.add(create_assoc_instruction)
+
+    return ata_tx
+
+def _create_buy_token_instruction(
+    program_id_pubkey: Pubkey,
+    ico_state_pda: Pubkey,
+    buyer_pubkey: Pubkey,
+    escrow_pda: Pubkey,
+    token_mint_pubkey: Pubkey,
+    buyer_token_account: Pubkey,
+    amount_lamports: int
+) -> tuple[bytes, List[AccountMeta]]:
+    """Creates the instruction data and accounts for buying tokens."""
+    instruction_data = struct.pack("<BQ", INSTRUCTION_INDEX_BUY_TOKENS, amount_lamports)
+
+    accounts = [
+        AccountMeta(pubkey=ico_state_pda, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=buyer_pubkey, is_signer=True, is_writable=True),
+        AccountMeta(pubkey=escrow_pda, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=token_mint_pubkey, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=buyer_token_account, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=system_program.SYS_PROGRAM_ID, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=TOKEN_PROGRAM_ID, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=sysvar.SYSVAR_RENT_PUBKEY, is_signer=False, is_writable=False),
+    ]
+
+    return instruction_data, accounts
 
 def initialize_ico(
     solana_client: SolanaClient,
@@ -79,10 +154,9 @@ def initialize_ico(
         escrow_pda, _ = find_escrow_pda(owner_pubkey, program_id_pubkey)
 
         # 2. Instruction data (using struct.pack for Borsh serialization)
-        # Assuming instruction index 0 for InitializeIco
         instruction_data = struct.pack(
             "<BQQQ", # Removed token_mint from pack as it's passed via accounts
-            0,  # Instruction index
+            INSTRUCTION_INDEX_INITIALIZE,  # Instruction index
             total_supply,
             base_price,
             scaling_factor
@@ -123,7 +197,7 @@ def initialize_ico(
 def _get_token_mint_from_ico_state(solana_client: SolanaClient, ico_state_pda: Pubkey) -> Pubkey:
     """Helper to fetch and parse the token mint from the ICO state account."""
     try:
-        ico_account_info: RpcResult[GetAccountInfoResp] = solana_client.get_account_info(ico_state_pda)
+        ico_account_info: GetAccountInfoResp = solana_client.get_account_info(ico_state_pda)
         if ico_account_info.value is None or ico_account_info.value.data is None:
             raise SolanaIcoError(f"ICO state account {ico_state_pda} not found or has no data.")
 
@@ -165,7 +239,7 @@ def buy_tokens(
     buyer_keypair: Keypair,
     amount_lamports: int,
     ico_owner_pubkey_str: str,
-    token_mint_str: str # Added: Explicitly require token mint
+    token_mint_str: str
 ) -> str:
     """
     Allows a user to buy tokens from the ICO.
@@ -188,49 +262,27 @@ def buy_tokens(
         SolanaIcoError: If required accounts (like ICO state) are not found or invalid.
     """
     try:
-        program_id_pubkey = Pubkey.from_string(program_id_str)
-        buyer_pubkey = buyer_keypair.pubkey()
-        ico_owner_pubkey = Pubkey.from_string(ico_owner_pubkey_str) # Owner key needed for PDAs
-        token_mint_pubkey = Pubkey.from_string(token_mint_str) # Get mint from argument
+        # Validate and convert public key strings
+        program_id_pubkey, buyer_pubkey, ico_owner_pubkey, token_mint_pubkey = _validate_and_convert_pubkeys(
+            program_id_str, buyer_keypair, ico_owner_pubkey_str, token_mint_str
+        )
 
-        # 1. Find PDAs using owner key
-        ico_state_pda, _ = find_ico_state_pda(ico_owner_pubkey, program_id_pubkey)
-        escrow_pda, _ = find_escrow_pda(ico_owner_pubkey, program_id_pubkey)
+        # Find PDAs
+        ico_state_pda, escrow_pda = _find_ico_pdases(ico_owner_pubkey, program_id_pubkey)
 
-        # 2. Get or Create Associated Token Account (ATA) for Buyer
+        # Handle associated token account
+        ata_tx = _handle_associated_token_account(solana_client, buyer_pubkey, token_mint_pubkey)
+
+        # Get buyer token account address
         buyer_token_account = get_associated_token_address(buyer_pubkey, token_mint_pubkey)
 
-        # Check if ATA exists, create if not
-        ata_tx = Transaction()
-        try:
-            # Use get_account_info which raises if not found via the client wrapper
-            solana_client.get_account_info(buyer_token_account)
-        except SolanaIcoError: # Assuming get_account_info raises this or similar on not found
-             print(f"Buyer ATA {buyer_token_account} not found. Creating...")
-             create_assoc_instruction = create_associated_token_account(
-                 payer=buyer_pubkey,
-                 owner=buyer_pubkey,
-                 mint=token_mint_pubkey,
-             )
-             ata_tx.add(create_assoc_instruction)
+        # Create instruction data and accounts
+        instruction_data, accounts = _create_buy_token_instruction(
+            program_id_pubkey, ico_state_pda, buyer_pubkey, escrow_pda,
+            token_mint_pubkey, buyer_token_account, amount_lamports
+        )
 
-        # 4. Instruction data
-        # Assuming instruction index 1 for BuyTokens
-        instruction_data = struct.pack("<BQ", 1, amount_lamports)
-
-        # 5. Create Accounts
-        accounts = [
-            AccountMeta(pubkey=ico_state_pda, is_signer=False, is_writable=True), # Often writable to update tokens_sold
-            AccountMeta(pubkey=buyer_pubkey, is_signer=True, is_writable=True),      # Pays SOL
-            AccountMeta(pubkey=escrow_pda, is_signer=False, is_writable=True),      # Receives SOL
-            AccountMeta(pubkey=token_mint_pubkey, is_signer=False, is_writable=True), # Mint needs to be writable for minting tokens
-            AccountMeta(pubkey=buyer_token_account, is_signer=False, is_writable=True),  # Receives CTX
-            AccountMeta(pubkey=system_program.SYS_PROGRAM_ID, is_signer=False, is_writable=False),
-            AccountMeta(pubkey=TOKEN_PROGRAM_ID, is_signer=False, is_writable=False), # Token program needed for minting/transfer
-            AccountMeta(pubkey=sysvar.SYSVAR_RENT_PUBKEY, is_signer=False, is_writable=False), # Needed if creating ATA
-        ]
-
-        # 6. Create instruction and transaction
+        # Create and send transaction
         buy_tx = Transaction()
         _create_and_add_instruction(buy_tx, program_id_pubkey, *accounts, data=instruction_data)
 
@@ -238,14 +290,12 @@ def buy_tokens(
         final_tx = ata_tx.combine(buy_tx) if ata_tx.instructions else buy_tx
 
         result = solana_client.send_transaction(final_tx, buyer_keypair)
-        # Optional: Confirm transaction
-        # solana_client.confirm_transaction(str(result.value))
         return str(result.value)
 
     except (ValueError, PDAError, NotImplementedError, SolanaIcoError) as e:
-        raise e # Re-raise specific validation/setup errors
+        raise e  # Re-raise specific validation/setup errors
     except TransactionError as e:
-         raise TokenPurchaseError(f"Transaction failed during token purchase: {e}") from e
+        raise TokenPurchaseError(f"Transaction failed during token purchase: {e}") from e
     except Exception as e:
         raise TokenPurchaseError(f"Failed to buy tokens: {e}") from e
 
@@ -355,8 +405,7 @@ def withdraw_from_escrow(solana_client: SolanaClient, program_id_str: str, owner
         escrow_pda, _ = find_escrow_pda(owner_pubkey, program_id_pubkey)
 
         # 2. Instruction data
-        # Assuming instruction index 3 for WithdrawFromEscrow
-        instruction_data = struct.pack("<BQ", 3, amount_lamports)
+        instruction_data = struct.pack("<BQ", INSTRUCTION_INDEX_WITHDRAW_ESCROW, amount_lamports)
 
         # 3. Create Accounts
         accounts = [
